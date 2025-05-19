@@ -1,5 +1,6 @@
 const express = require("express");
 const fileUpload = require("express-fileupload");
+const cors = require("cors"); // ✅ NEW
 const { PDFDocument } = require("pdf-lib");
 const fs = require("fs");
 const path = require("path");
@@ -7,6 +8,7 @@ const { exec } = require("child_process");
 require("dotenv").config();
 
 const app = express();
+app.use(cors()); // ✅ NEW
 app.use(fileUpload());
 app.use(express.json());
 
