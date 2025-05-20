@@ -25,8 +25,8 @@ app.post("/decrypt", async (req, res) => {
       await PDFDocument.load(pdfBytes, { ignoreEncryption: false });
     } catch {
       const tempId = Date.now();
-      const inPath = path.join(__dirname, `temp-${tempId}.pdf`);
-      const outPath = path.join(__dirname, `temp-${tempId}-dec.pdf`);
+      const inPath = path.join("/tmp", `temp-${tempId}.pdf`);
+      const outPath = path.join("/tmp", `temp-${tempId}-dec.pdf`);
       fs.writeFileSync(inPath, file.data);
       await new Promise((resolve, reject) => {
         exec(`qpdf --decrypt "${inPath}" "${outPath}"`, (error) => {
