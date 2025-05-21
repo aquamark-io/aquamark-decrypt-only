@@ -1,53 +1,65 @@
 const express = require("express");
 const fileUpload = require("express-fileupload");
-const cors = require("cors"); // ✅ NEW
-const { PDFDocument } = require("pdf-lib");
+const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const { exec } = require("child_process");
-require("dotenv").config();
+const { PDFDocument } = require("pdf-lib");
 
 const app = express();
-app.use(cors()); // ✅ NEW
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
 app.use(fileUpload());
-app.use(express.json());
 
 app.post("/decrypt", async (req, res) => {
-  if (!req.files || !req.files.file) {
-    return res.status(400).send("Missing file");
-  }
-
-  const file = req.files.file;
-
   try {
-    let pdfBytes = file.data;
+    if (!req.files || !req.files.pdf) {
+      return res.status(400).json({ error: "No PDF uploaded" });
+    }
+
+    const file = req.files.pdf;
+    let pdfBytes;
+
+    const tempId = Date.now();
+    const inPath = path.join("/tmp", `in-${tempId}.pdf`);
+    const outPath = path.join("/tmp", `out-${tempId}.pdf`);
+
+    // Write input PDF to disk
+    fs.writeFileSync(inPath, file.data);
+
     try {
-      await PDFDocument.load(pdfBytes, { ignoreEncryption: false });
-    } catch {
-      const tempId = Date.now();
-      const inPath = path.join("/tmp", `temp-${tempId}.pdf`);
-      const outPath = path.join("/tmp", `temp-${tempId}-dec.pdf`);
-      fs.writeFileSync(inPath, file.data);
+      // Attempt decryption with qpdf
       await new Promise((resolve, reject) => {
         exec(`qpdf --decrypt "${inPath}" "${outPath}"`, (error) => {
           if (error) reject(error);
           else resolve();
         });
       });
+
+      // If successful, read decrypted file
       pdfBytes = fs.readFileSync(outPath);
+
+      // Clean up
       fs.unlinkSync(inPath);
       fs.unlinkSync(outPath);
+    } catch (err) {
+      console.warn("Decryption failed — returning original file.");
+      pdfBytes = file.data;
+
+      // Clean up only input file
+      if (fs.existsSync(inPath)) fs.unlinkSync(inPath);
+      if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
     }
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.send(Buffer.from(pdfBytes));
+    const base64Pdf = Buffer.from(pdfBytes).toString("base64");
+    res.json({ base64: base64Pdf });
   } catch (err) {
-    console.error("❌ Decrypt error:", err);
-    res.status(500).send("Decryption failed: " + err.message);
+    console.error("❌ An error occurred:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🔓 Decrypt-only server running on port ${PORT}`);
+  console.log(`🔐 PDF Decryption Service running on port ${PORT}`);
 });
