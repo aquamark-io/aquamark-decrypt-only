@@ -52,8 +52,10 @@ app.post("/decrypt", async (req, res) => {
       if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
     }
 
-    const base64Pdf = Buffer.from(pdfBytes).toString("base64");
-    res.json({ base64: base64Pdf });
+res.setHeader("Content-Type", "application/pdf");
+res.setHeader("Content-Disposition", "attachment; filename=decrypted.pdf");
+res.send(Buffer.from(pdfBytes));
+
   } catch (err) {
     console.error("❌ An error occurred:", err);
     res.status(500).json({ error: "Internal server error" });
