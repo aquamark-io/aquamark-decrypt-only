@@ -21,4 +21,4 @@ COPY . .
 
 # Expose port and start the app
 EXPOSE 10000
-CMD ["node", "decrypt.js"]
+CMD ["node", "index.js"]
